@@ -513,7 +513,8 @@ function simpleMarkdown(md: string): string {
     .replace(/```[\s\S]*?```/g, (m) => `<pre class="bg-ink-900 text-ink-100 rounded-lg p-4 text-xs overflow-x-auto"><code>${m.replace(/```\w*\n?/g, "")}</code></pre>`)
     .replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>")
     .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>)/gs, "<ul>$1</ul>")
+    // Fix applied here: replaced .* with [\s\S]* and removed the 's' flag
+    .replace(/(<li>[\s\S]*<\/li>)/g, "<ul>$1</ul>")
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
     .replace(/\n\n/g, "</p><p>")
     .replace(/^(?!<[h|b|p|u|o|l|c|a])/gm, "<p>")
