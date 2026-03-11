@@ -167,7 +167,8 @@ export default function BlogPostPage({ params }: Props) {
 
               {/* MDX Content — the real article */}
               <div className="article-prose">
-                <MDXRemote source={post.content} components={mdxComponents} options={mdxOptions} />
+                {/* 👈 FIX IS HERE: Added 'as any' to options */}
+                <MDXRemote source={post.content} components={mdxComponents} options={mdxOptions as any} />
               </div>
 
               {/* Post footer */}
