@@ -1,0 +1,157 @@
+---
+title: "Building a REST API with Node.js, Express, and MongoDB"
+description: "A complete guide to building a production-ready REST API — authentication, validation, error handling, and deployment to Render."
+date: "2026-03-01"
+author: "Sandeep Kumar Pati"
+authorBio: "Full Stack Developer based in Pune. Building APIs and React apps since 2020."
+authorGithub: "sandy1997-dev"
+authorTwitter: "@KumarSande7673"
+tags: ["Node.js", "MongoDB", "Express", "Backend", "REST API"]
+featured: false
+toc: true
+---
+
+Building a production-ready REST API requires more than just `app.get("/", handler)`. You need authentication, validation, proper error handling, and a clear structure that scales.
+
+## Project Setup
+
+```bash
+mkdir my-api && cd my-api
+npm init -y
+npm install express mongoose bcryptjs jsonwebtoken express-validator dotenv cors helmet morgan
+npm install -D typescript @types/express @types/node ts-node-dev
+```
+
+## Project Structure
+
+```
+src/
+├── config/         # DB connection, env validation
+├── controllers/    # Request handlers
+├── middleware/     # Auth, error handling, validation
+├── models/         # Mongoose schemas
+├── routes/         # Express routers
+└── index.ts        # Entry point
+```
+
+## Database Connection
+
+```typescript
+// src/config/database.ts
+import mongoose from "mongoose";
+
+export async function connectDB() {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI!);
+    console.log("MongoDB connected");
+  } catch (err) {
+    console.error("MongoDB connection failed:", err);
+    process.exit(1);
+  }
+}
+```
+
+## User Model with Password Hashing
+
+```typescript
+// src/models/User.ts
+import mongoose, { Document } from "mongoose";
+import bcrypt from "bcryptjs";
+
+export interface IUser extends Document {
+  name: string;
+  email: string;
+  password: string;
+  comparePassword(candidate: string): Promise<boolean>;
+}
+
+const userSchema = new mongoose.Schema<IUser>({
+  name:     { type: String, required: true, trim: true },
+  email:    { type: String, required: true, unique: true, lowercase: true },
+  password: { type: String, required: true, minlength: 8 },
+}, { timestamps: true });
+
+// Hash password before saving
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+userSchema.methods.comparePassword = function (candidate: string) {
+  return bcrypt.compare(candidate, this.password);
+};
+
+export const User = mongoose.model<IUser>("User", userSchema);
+```
+
+## JWT Authentication Middleware
+
+```typescript
+// src/middleware/auth.ts
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { User } from "@/models/User";
+
+export interface AuthRequest extends Request {
+  user?: { id: string; email: string };
+}
+
+export async function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) return res.status(401).json({ message: "No token provided" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) return res.status(401).json({ message: "User not found" });
+    req.user = { id: user.id, email: user.email };
+    next();
+  } catch {
+    res.status(401).json({ message: "Invalid token" });
+  }
+}
+```
+
+## Global Error Handler
+
+```typescript
+// src/middleware/errorHandler.ts
+import { Request, Response, NextFunction } from "express";
+
+export interface AppError extends Error {
+  statusCode?: number;
+  isOperational?: boolean;
+}
+
+export function errorHandler(err: AppError, req: Request, res: Response, next: NextFunction) {
+  const status = err.statusCode || 500;
+  const message = err.isOperational ? err.message : "Internal server error";
+
+  if (process.env.NODE_ENV !== "production") {
+    console.error(err.stack);
+  }
+
+  res.status(status).json({
+    status: "error",
+    message,
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
+}
+```
+
+<Callout type="warning" title="Never expose stack traces in production">
+Always check `NODE_ENV` before sending error details. Stack traces contain file paths and internal details that attackers can use.
+</Callout>
+
+## Deploying to Render
+
+1. Push your code to GitHub
+2. Go to **render.com** → New → Web Service
+3. Connect your repo
+4. Set **Build Command**: `npm install && npm run build`
+5. Set **Start Command**: `npm start`
+6. Add environment variables: `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`
+7. Click **Deploy**
+
+Your API is live at `https://your-app.onrender.com` in about 2 minutes.

@@ -1,0 +1,142 @@
+---
+title: "Next.js 14 App Router Performance Playbook"
+description: "Practical strategies for maximizing Core Web Vitals in Next.js 14 — RSC, streaming, image optimization, and bundle analysis."
+date: "2026-02-08"
+author: "Sandeep Kumar Pati"
+authorBio: "Full Stack Developer focused on React performance and developer experience."
+authorGithub: "sandy1997-dev"
+authorTwitter: "@KumarSande7673"
+tags: ["Next.js", "Performance", "React", "Web"]
+featured: false
+toc: true
+series: "Next.js Deep Dives"
+seriesOrder: 1
+image: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=1200&h=630&fit=crop&q=80"
+imageAlt: "Performance monitoring dashboard"
+---
+
+Performance is not a feature you add at the end — it is an architectural decision baked in from the start. The Next.js App Router gives you powerful tools to build fast applications by default.
+
+## React Server Components — The Biggest Win
+
+Server Components render on the server and **never ship JavaScript to the browser**. This is the most important performance tool available in Next.js 14.
+
+```tsx
+// This file runs on the server only
+// The database query, imports, and component code never reach the browser
+import { db } from "@/lib/db";
+
+export default async function PostList() {
+  const posts = await db.post.findMany({ orderBy: { date: "desc" } });
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**Rule:** Only add `"use client"` when you need browser APIs, event handlers, or React hooks.
+
+## Strategic Streaming with Suspense
+
+Streaming sends HTML progressively as data becomes available:
+
+```tsx
+import { Suspense } from "react";
+
+export default function BlogPage() {
+  return (
+    <div>
+      {/* Renders immediately — no data needed */}
+      <PageHeader title="Blog" />
+
+      {/* Streams in when ready, shows skeleton meanwhile */}
+      <Suspense fallback={<PostSkeleton count={6} />}>
+        <PostList />
+      </Suspense>
+
+      <Suspense fallback={<TagsSkeleton />}>
+        <TagCloud />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+Each `<Suspense>` boundary is an independent streaming chunk.
+
+## Parallel Data Fetching
+
+Sequential `await` is a common performance killer:
+
+```typescript
+// Bad — total time = A + B + C
+const user     = await getUser(id);      // 200ms
+const posts    = await getPosts(id);     // 300ms
+const comments = await getComments(id); // 150ms
+// Total: 650ms
+
+// Good — total time = max(A, B, C)
+const [user, posts, comments] = await Promise.all([
+  getUser(id),      // 200ms
+  getPosts(id),     // 300ms  <-- bottleneck
+  getComments(id),  // 150ms
+]);
+// Total: ~300ms (2x faster)
+```
+
+## Image Optimization
+
+```tsx
+import Image from "next/image";
+
+// Hero — preload the LCP image
+<Image src="/hero.jpg" alt="Hero" width={1400} height={600} priority quality={85} />
+
+// Below fold — lazy loaded automatically
+<Image
+  src={post.image}
+  alt={post.title}
+  width={800} height={450}
+  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+/>
+```
+
+The `sizes` attribute is critical — without it, the browser may download a 1400px image to display at 400px.
+
+## Caching Strategy
+
+```typescript
+// Static — generated once at build time
+export const revalidate = false;
+
+// ISR — regenerate every hour
+export const revalidate = 3600;
+
+// Always fresh
+export const dynamic = "force-dynamic";
+
+// On-demand revalidation from webhooks
+import { revalidateTag } from "next/cache";
+revalidateTag("posts"); // Bust all fetches tagged "posts"
+```
+
+<Callout type="info">
+After optimizing, always **measure** with Vercel Analytics (Real User Monitoring) and Chrome DevTools Lighthouse. A 100ms improvement in LCP translates to a measurable increase in conversion rate.
+</Callout>
+
+## Lazy Load Heavy Components
+
+```tsx
+import dynamic from "next/dynamic";
+
+const RichTextEditor = dynamic(
+  () => import("@/components/RichTextEditor"),
+  { loading: () => <EditorSkeleton />, ssr: false }
+);
+```
+
+Heavy components like rich text editors, chart libraries, and code editors can be 100KB+ — always lazy load them.

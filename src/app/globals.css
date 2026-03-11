@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --header-height: 64px; }
+
+@layer base {
+  html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header-height) + 1.5rem); }
+  *:focus-visible { @apply outline-2 outline-offset-2 outline-amber-500 rounded-sm; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-ink-300 dark:bg-ink-700 rounded-full; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-ui font-medium text-sm leading-none
+           px-4 py-2.5 rounded-lg transition-all duration-150 active:scale-[0.97]
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-ink-900 text-white dark:bg-amber-500 dark:text-ink-950
+           hover:bg-ink-700 dark:hover:bg-amber-400 shadow-sm;
+  }
+  .btn-ghost {
+    @apply btn text-ink-600 dark:text-ink-400 hover:bg-ink-100 dark:hover:bg-ink-800 hover:text-ink-900 dark:hover:text-ink-100;
+  }
+  .btn-outline {
+    @apply btn border border-ink-300 dark:border-ink-700 text-ink-700 dark:text-ink-300
+           hover:border-ink-500 dark:hover:border-ink-500 hover:text-ink-900 dark:hover:text-ink-100;
+  }
+  .tag-pill {
+    @apply inline-flex items-center gap-1 font-ui text-[10px] font-semibold uppercase tracking-widest
+           px-2.5 py-1 rounded-full bg-ink-100 dark:bg-ink-800 text-ink-600 dark:text-ink-400
+           border border-ink-200/60 dark:border-ink-700/60 transition-colors
+           hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-400
+           hover:border-amber-200 dark:hover:border-amber-800/40;
+  }
+  .card {
+    @apply rounded-2xl border border-ink-200/80 dark:border-ink-800/80
+           bg-white/70 dark:bg-ink-900/60 backdrop-blur-sm shadow-sm transition-all duration-300;
+  }
+  .card-hover {
+    @apply card hover:border-ink-300 dark:hover:border-ink-700 hover:shadow-md hover:-translate-y-0.5;
+  }
+  .article-prose {
+    @apply prose prose-lg dark:prose-invert max-w-none
+           prose-headings:font-display prose-headings:tracking-tight
+           prose-a:text-amber-700 dark:prose-a:text-amber-400
+           prose-a:no-underline prose-a:font-medium
+           hover:prose-a:underline
+           prose-code:font-mono
+           prose-pre:p-0 prose-pre:bg-transparent;
+  }
+}
+
+@layer utilities {
+  .animate-delay-100  { animation-delay: 100ms; }
+  .animate-delay-200  { animation-delay: 200ms; }
+  .animate-delay-300  { animation-delay: 300ms; }
+  .animate-delay-500  { animation-delay: 500ms; }
+  .bg-dots {
+    background-image: radial-gradient(circle, #00000015 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .dark .bg-dots { background-image: radial-gradient(circle, #ffffff08 1px, transparent 1px); }
+}
+
+/* Shiki syntax highlight */
+.dark .shiki, .dark .shiki span { color: var(--shiki-dark) !important; background-color: transparent !important; }
+.shiki code { font-family: var(--font-jetbrains), monospace !important; font-size: 0.875rem !important; line-height: 1.7 !important; }
+.shiki .line.highlighted { @apply bg-amber-500/10 -mx-5 px-5 border-l-2 border-amber-500; }

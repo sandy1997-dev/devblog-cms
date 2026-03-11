@@ -1,0 +1,123 @@
+---
+title: "Advanced TypeScript Patterns for Production Code"
+description: "Practical exploration of branded types, conditional types, template literals, and discriminated unions with real-world examples."
+date: "2026-01-15"
+author: "Sandeep Kumar Pati"
+authorBio: "Full Stack Developer based in Pune, India. Passionate about TypeScript, React, and modern web development."
+authorGithub: "sandy1997-dev"
+authorTwitter: "@KumarSande7673"
+tags: ["TypeScript", "JavaScript", "Best Practices"]
+featured: true
+toc: true
+series: "TypeScript Mastery"
+seriesOrder: 1
+image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200&h=630&fit=crop&q=80"
+imageAlt: "Code editor with TypeScript"
+---
+
+TypeScript has matured far beyond simple type annotations. The patterns that separate *good* TypeScript from *great* TypeScript are the ones that make your types do real work — catching bugs at compile time and expressing intent clearly.
+
+## Branded Types — Safe Primitives
+
+Raw primitives like `string` and `number` are too permissive. Branded types prevent accidentally mixing a `UserId` with an `OrderId`:
+
+```typescript
+declare const __brand: unique symbol;
+type Branded<T, B> = T & { [__brand]: B };
+
+type UserId   = Branded<string, "UserId">;
+type OrderId  = Branded<string, "OrderId">;
+
+const toUserId  = (id: string): UserId  => id as UserId;
+const toOrderId = (id: string): OrderId => id as OrderId;
+
+function getUser(id: UserId) { /* ... */ }
+
+const userId  = toUserId("usr_123");
+const orderId = toOrderId("ord_456");
+
+getUser(userId);   // ✓ OK
+getUser(orderId);  // ✗ TypeScript Error — saved you from a bug
+```
+
+<Callout type="tip" title="Zero runtime cost">
+Branded types are **purely compile-time constructs**. The `as` cast is erased during compilation — there is absolutely no runtime overhead.
+</Callout>
+
+## Discriminated Unions for State Machines
+
+Discriminated unions are one of TypeScript's most powerful patterns for managing state:
+
+```typescript
+type AsyncState<TData, TError = Error> =
+  | { status: "idle"    }
+  | { status: "loading" }
+  | { status: "success"; data: TData;   timestamp: Date }
+  | { status: "error";   error: TError; retryCount: number };
+
+function renderState<T>(state: AsyncState<T>) {
+  switch (state.status) {
+    case "idle":    return "Nothing loaded yet";
+    case "loading": return "Loading...";
+    case "success": return `Data: ${JSON.stringify(state.data)}`;
+    case "error":   return `Error: ${state.error.message}`;
+  }
+}
+```
+
+TypeScript narrows the type in each branch — no casting needed.
+
+## The `satisfies` Operator
+
+Introduced in TypeScript 4.9, `satisfies` validates a value against a type **without widening** it:
+
+```typescript
+type Color = "red" | "green" | "blue";
+type Palette = Record<Color, { hex: string; rgb: [number, number, number] }>;
+
+// rgb is preserved as a tuple, not widened to number[]
+const palette = {
+  red:   { hex: "#ff0000", rgb: [255, 0, 0]   },
+  green: { hex: "#00ff00", rgb: [0, 255, 0]   },
+  blue:  { hex: "#0000ff", rgb: [0, 0, 255]   },
+} satisfies Palette;
+
+const [r, g, b] = palette.red.rgb; // Tuple — TypeScript knows this
+```
+
+## Conditional Types with `infer`
+
+Extract type information from complex types at compile time:
+
+```typescript
+type Awaited<T> = T extends Promise<infer U> ? Awaited<U> : T;
+type FirstArg<T extends (...args: any[]) => any> =
+  T extends (first: infer F, ...rest: any[]) => any ? F : never;
+
+async function fetchUser(id: string) { return { id, name: "Sandeep" }; }
+
+type UserData = Awaited<ReturnType<typeof fetchUser>>;
+// UserData = { id: string; name: string }
+```
+
+## Template Literal Types
+
+Build type-safe event systems and API paths:
+
+```typescript
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type ApiPath    = `/api/${string}`;
+type EventName  = "click" | "focus" | "blur";
+type Namespace  = "button" | "input";
+
+// 6 combinations auto-generated
+type NamespacedEvent = `${Namespace}:${EventName}`;
+
+const on = (event: NamespacedEvent, handler: () => void) => {};
+on("button:click", () => {});  // ✓
+on("button:hover", () => {});  // ✗ Type error
+```
+
+## Conclusion
+
+These patterns move TypeScript from "catch obvious bugs" to "make illegal states unrepresentable." Start with branded types for your domain IDs, add discriminated unions for UI state, and reach for `infer` when you need to derive types rather than duplicate them.
