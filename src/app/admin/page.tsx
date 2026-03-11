@@ -79,8 +79,6 @@ export default function AdminLoginPage() {
 
         <p className="text-center text-xs text-ink-400 mt-4">
           Default password: <code className="bg-ink-100 dark:bg-ink-800 px-1.5 py-0.5 rounded text-ink-600 dark:text-ink-400">devblog2024</code>
-          <br />
-          <span className="text-[10px]">Set <code className="bg-ink-100 dark:bg-ink-800 px-1 rounded">ADMIN_PASSWORD</code> env var to change</span>
         </p>
       </div>
     </div>
